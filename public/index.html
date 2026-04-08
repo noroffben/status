@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Status</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d;
+      --text: #e0e0e0;
+      --text-dim: #555;
+      --green: #00ff88;
+      --red: #ff3355;
+      --glow-green: rgba(0,255,136,0.4);
+      --glow-red: rgba(255,51,85,0.4);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+    .label {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .dot {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #fff 0%, var(--dot-color) 40%, var(--dot-dark) 100%);
+      box-shadow: 0 0 40px var(--dot-glow), 0 0 80px var(--dot-glow), inset 0 -8px 20px rgba(0,0,0,0.4);
+      transition: background 0.6s ease, box-shadow 0.6s ease;
+      animation: breathe 3s ease-in-out infinite;
+    }
+    .dot.online {
+      --dot-color: var(--green);
+      --dot-dark: #003d22;
+      --dot-glow: var(--glow-green);
+    }
+    .dot.offline {
+      --dot-color: var(--red);
+      --dot-dark: #3d0010;
+      --dot-glow: var(--glow-red);
+      animation: none;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .status-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      transition: color 0.6s ease;
+    }
+    .status-text.online { color: var(--green); }
+    .status-text.offline { color: var(--red); }
+    .refresh-note {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.2em;
+    }
+  </style>
+</head>
+<body>
+  <span class="label">Current Status</span>
+  <div class="dot" id="dot"></div>
+  <div class="status-text" id="statusText">—</div>
+  <span class="refresh-note">auto-refreshes every 3s</span>
+
+  <script>
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('statusText');
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        const isOnline = data.status === 'online';
+        dot.className = 'dot ' + (isOnline ? 'online' : 'offline');
+        statusText.className = 'status-text ' + (isOnline ? 'online' : 'offline');
+        statusText.textContent = isOnline ? 'Online' : 'Offline';
+      } catch (e) {
+        statusText.textContent = 'Unreachable';
+      }
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 3000);
+  </script>
+</body>
+</html>
