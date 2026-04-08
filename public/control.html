@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Control Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --text-dim: #555;
+      --green: #00ff88;
+      --red: #ff3355;
+      --glow-green: rgba(0,255,136,0.25);
+      --glow-red: rgba(255,51,85,0.25);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      padding: 2rem;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+    h1 {
+      font-size: 0.65rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 340px;
+    }
+    .current-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .current-status {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.4s;
+    }
+    .current-status.online { color: var(--green); }
+    .current-status.offline { color: var(--red); }
+    .divider { width: 100%; height: 1px; background: var(--border); }
+    .btn-group { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
+    button {
+      width: 100%;
+      padding: 1rem;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    button:active { transform: scale(0.97); }
+    button.green-btn {
+      background: var(--green);
+      color: #001a0d;
+      box-shadow: 0 0 24px var(--glow-green);
+    }
+    button.red-btn {
+      background: var(--red);
+      color: #1a0008;
+      box-shadow: 0 0 24px var(--glow-red);
+    }
+    button.active-state { opacity: 0.4; pointer-events: none; }
+    .feedback {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--text-dim);
+      min-height: 1em;
+      text-align: center;
+    }
+    .feedback.ok { color: var(--green); }
+    .feedback.err { color: var(--red); }
+  </style>
+</head>
+<body>
+  <h1>Status Control</h1>
+  <div class="panel">
+    <span class="current-label">Current</span>
+    <span class="current-status" id="currentStatus">—</span>
+    <div class="divider"></div>
+    <div class="btn-group">
+      <button class="green-btn" id="btnOnline" onclick="setStatus('online')">🟢 Set Online</button>
+      <button class="red-btn" id="btnOffline" onclick="setStatus('offline')">🔴 Set Offline</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <script>
+    const currentStatusEl = document.getElementById('currentStatus');
+    const feedbackEl = document.getElementById('feedback');
+    const btnOnline = document.getElementById('btnOnline');
+    const btnOffline = document.getElementById('btnOffline');
+
+    function updateUI(status) {
+      currentStatusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      currentStatusEl.className = 'current-status ' + status;
+      btnOnline.classList.toggle('active-state', status === 'online');
+      btnOffline.classList.toggle('active-state', status === 'offline');
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        updateUI(data.status);
+      } catch (e) {
+        currentStatusEl.textContent = 'N/A';
+      }
+    }
+
+    async function setStatus(val) {
+      feedbackEl.textContent = 'Updating...';
+      feedbackEl.className = 'feedback';
+      try {
+        const res = await fetch('/set/' + val, { method: 'POST' });
+        const data = await res.json();
+        updateUI(data.status);
+        feedbackEl.textContent = '✓ Updated';
+        feedbackEl.className = 'feedback ok';
+      } catch (e) {
+        feedbackEl.textContent = '✗ Could not reach server';
+        feedbackEl.className = 'feedback err';
+      }
+      setTimeout(() => { feedbackEl.textContent = ''; feedbackEl.className = 'feedback'; }, 3000);
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 3000);
+  </script>
+</body>
+</html>
