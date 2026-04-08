@@ -84,10 +84,10 @@
   </style>
 </head>
 <body>
-  <span class="label">Current Status</span>
+  <!--<span class="label">Current Status</span>-->
   <div class="dot" id="dot"></div>
   <div class="status-text" id="statusText">—</div>
-  <span class="refresh-note">auto-refreshes every 3s</span>
+  <!--<span class="refresh-note">auto-refreshes every 3s</span>-->
 
   <script>
     const dot = document.getElementById('dot');
@@ -100,7 +100,7 @@
         const isOnline = data.status === 'online';
         dot.className = 'dot ' + (isOnline ? 'online' : 'offline');
         statusText.className = 'status-text ' + (isOnline ? 'online' : 'offline');
-        statusText.textContent = isOnline ? 'Online' : 'Offline';
+        statusText.textContent = isOnline ? 'PÅ PLATS' : 'Offline';
       } catch (e) {
         statusText.textContent = 'Unreachable';
       }
