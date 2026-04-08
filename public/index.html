@@ -2,187 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Status</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #0d0d0d;
-      font-family: 'Space Mono', monospace;
-      overflow: hidden;
-      user-select: none;
+    :root {
+      --bg: #0d0d0d;
+      --text: #e0e0e0;
+      --text-dim: #555;
+      --green: #00ff88;
+      --red: #ff3355;
+      --glow-green: rgba(0,255,136,0.4);
+      --glow-red: rgba(255,51,85,0.4);
     }
-    canvas { display: block; touch-action: none; }
-    #score-display {
-      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-      font-size: 0.6rem; color: #333; letter-spacing: 0.2em;
-      display: none;
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+    .label {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .dot {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #fff 0%, var(--dot-color) 40%, var(--dot-dark) 100%);
+      box-shadow: 0 0 40px var(--dot-glow), 0 0 80px var(--dot-glow), inset 0 -8px 20px rgba(0,0,0,0.4);
+      transition: background 0.6s ease, box-shadow 0.6s ease;
+      animation: breathe 3s ease-in-out infinite;
+    }
+    .dot.online {
+      --dot-color: var(--green);
+      --dot-dark: #003d22;
+      --dot-glow: var(--glow-green);
+    }
+    .dot.offline {
+      --dot-color: var(--red);
+      --dot-dark: #3d0010;
+      --dot-glow: var(--glow-red);
+      animation: none;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .status-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      transition: color 0.6s ease;
+    }
+    .status-text.online { color: var(--green); }
+    .status-text.offline { color: var(--red); }
+    .refresh-note {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.2em;
     }
   </style>
 </head>
 <body>
-  <div id="score-display">SCORE: <span id="score-val">0</span></div>
-  <canvas id="c"></canvas>
-<script>
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W, H;
-function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-resize();
-window.addEventListener('resize', resize);
+  <span class="label">Current Status</span>
+  <div class="dot" id="dot"></div>
+  <div class="status-text" id="statusText">—</div>
+  <span class="refresh-note">auto-refreshes every 3s</span>
 
-let statusOnline = true;
-async function fetchStatus() {
-  try {
-    const res = await fetch('/status');
-    const data = await res.json();
-    statusOnline = data.status === 'online';
-  } catch(e) {}
-}
-fetchStatus();
-setInterval(fetchStatus, 3000);
+  <script>
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('statusText');
 
-let state = 'idle';
-let ball, pipes, score, frame, hiScore = 0;
-const GRAVITY = 0.45, JUMP = -9, PIPE_W = 44, GAP = 160, PIPE_SPEED = 3, BALL_R = 18;
-
-function initGame() {
-  ball = { x: W * 0.25, y: H / 2, vy: 0 };
-  pipes = []; score = 0; frame = 0;
-}
-
-function jump() {
-  if (state === 'idle') {
-    state = 'playing';
-    document.getElementById('score-display').style.display = 'block';
-    initGame(); ball.vy = JUMP;
-  } else if (state === 'playing') {
-    ball.vy = JUMP;
-  } else if (state === 'dead') {
-    state = 'idle';
-    document.getElementById('score-display').style.display = 'none';
-    ball = { x: W * 0.25, y: H / 2, vy: 0 };
-    pipes = [];
-  }
-}
-
-document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); jump(); }});
-canvas.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
-
-function spawnPipe() {
-  const minTop = 80, maxTop = H - GAP - 80;
-  const top = minTop + Math.random() * (maxTop - minTop);
-  pipes.push({ x: W + PIPE_W, top, scored: false });
-}
-
-function getDotColor() {
-  return statusOnline ? '#00ff88' : '#ff3355';
-}
-
-function drawDot(x, y) {
-  const color = getDotColor();
-  const darkColor = statusOnline ? '#003d22' : '#3d0010';
-  const glowColor = statusOnline ? 'rgba(0,255,136,0.4)' : 'rgba(255,51,85,0.4)';
-
-  ctx.save();
-  ctx.shadowColor = glowColor; ctx.shadowBlur = 24;
-  ctx.beginPath(); ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
-  ctx.fillStyle = color; ctx.fill();
-  ctx.restore();
-
-  const grad = ctx.createRadialGradient(x - BALL_R*0.3, y - BALL_R*0.3, BALL_R*0.05, x, y, BALL_R);
-  grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.3, color); grad.addColorStop(1, darkColor);
-  ctx.beginPath(); ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
-  ctx.fillStyle = grad; ctx.fill();
-
-  // Status word above dot
-  const label = statusOnline ? 'online' : 'offline';
-  ctx.fillStyle = color;
-  ctx.font = '700 0.55rem Space Mono, monospace';
-  ctx.textAlign = 'center';
-  ctx.letterSpacing = '0.2em';
-  ctx.fillText(label.toUpperCase(), x, y - BALL_R - 10);
-
-  // "click" below dot (only in idle)
-  if (state === 'idle') {
-    ctx.fillStyle = '#333';
-    ctx.font = '400 0.5rem Space Mono, monospace';
-    ctx.fillText('CLICK', x, y + BALL_R + 18);
-  }
-
-  // Score below dot when dead
-  if (state === 'dead') {
-    ctx.fillStyle = '#444';
-    ctx.font = '400 0.5rem Space Mono, monospace';
-    ctx.fillText('SCORE: ' + score + '  BEST: ' + hiScore, x, y + BALL_R + 18);
-  }
-}
-
-function drawPipe(p) {
-  const color = getDotColor();
-  const lineW = 2;
-
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineW;
-  ctx.shadowColor = statusOnline ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,85,0.2)';
-  ctx.shadowBlur = 8;
-
-  // Top pipe — hollow rectangle (just stroke)
-  ctx.strokeRect(p.x, 0, PIPE_W, p.top);
-
-  // Bottom pipe
-  const botY = p.top + GAP;
-  ctx.strokeRect(p.x, botY, PIPE_W, H - botY);
-
-  ctx.shadowBlur = 0;
-}
-
-function drawGrid() {
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-}
-
-function checkCollision(p) {
-  if (ball.x + BALL_R > p.x && ball.x - BALL_R < p.x + PIPE_W) {
-    if (ball.y - BALL_R < p.top || ball.y + BALL_R > p.top + GAP) return true;
-  }
-  return false;
-}
-
-function loop() {
-  ctx.fillStyle = '#0d0d0d'; ctx.fillRect(0, 0, W, H);
-  drawGrid();
-
-  if (state === 'playing') {
-    frame++;
-    if (frame % 90 === 0) spawnPipe();
-    ball.vy += GRAVITY; ball.y += ball.vy;
-    for (const p of pipes) {
-      p.x -= PIPE_SPEED;
-      if (!p.scored && p.x + PIPE_W < ball.x) {
-        p.scored = true; score++;
-        if (score > hiScore) hiScore = score;
-        document.getElementById('score-val').textContent = score;
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        const isOnline = data.status === 'online';
+        dot.className = 'dot ' + (isOnline ? 'online' : 'offline');
+        statusText.className = 'status-text ' + (isOnline ? 'online' : 'offline');
+        statusText.textContent = isOnline ? 'Online' : 'Offline';
+      } catch (e) {
+        statusText.textContent = 'Unreachable';
       }
     }
-    pipes = pipes.filter(p => p.x > -PIPE_W - 10);
-    if (ball.y + BALL_R > H || ball.y - BALL_R < 0) { state = 'dead'; document.getElementById('score-display').style.display = 'none'; }
-    for (const p of pipes) { if (checkCollision(p)) { state = 'dead'; document.getElementById('score-display').style.display = 'none'; break; } }
-  }
 
-  for (const p of pipes) drawPipe(p);
-
-  const dotY = state === 'idle' ? H / 2 + Math.sin(Date.now() / 600) * 8 : ball.y;
-  drawDot(ball ? ball.x : W * 0.25, dotY);
-
-  requestAnimationFrame(loop);
-}
-
-ball = { x: W * 0.25, y: H / 2, vy: 0 };
-pipes = [];
-loop();
-</script>
+    fetchStatus();
+    setInterval(fetchStatus, 3000);
+  </script>
 </body>
 </html>
