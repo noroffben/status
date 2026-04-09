@@ -100,7 +100,7 @@
         const isOnline = data.status === 'online';
         dot.className = 'dot ' + (isOnline ? 'online' : 'offline');
         statusText.className = 'status-text ' + (isOnline ? 'online' : 'offline');
-        statusText.textContent = isOnline ? 'PÅ PLATS' : 'Offline';
+        statusText.textContent = isOnline ? 'På Plats' : 'Offline';
       } catch (e) {
         statusText.textContent = 'Unreachable';
       }
